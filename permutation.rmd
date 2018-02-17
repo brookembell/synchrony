@@ -1,0 +1,138 @@
+---
+title: "Permutation tests"
+author: "George G. Vega Yon"
+date: "December 18, 2017"
+output: html_document
+---
+
+# Overview
+
+Case 1, association between two variables $(x, y)$: For each $b \in B$, $B$ is the number of simulations (and it is usually this letter from Bootstrap), do the following:
+
+1.  Define $x' = \mbox{perm}(x)$, a permuted version of $x$, 
+2.  Compute $s_b = \mbox{statistic}(x', y)$, your permuted version of the statistic $s$
+3.  Repeat
+
+At the end, you'll have a distribution of $s$'s which you can use for doing inference, the null distribution. In particular, you can compare $s_0 = \mbox{statistic}(x, y)$, your baseline statistic, with it:
+
+$$
+\mbox{p-value} \equiv \frac{1}{B}\sum_{b=1}^B\mathbf{I}\left(s_b < s_0\right)
+$$
+Where $\mathbf{I}$ is the indicator variable. Notice that $x$ and $y$ are just labels for the variables, hence this is equivalent if we use $y$ instead of $x$ to do the permutations.
+
+Programatically, you can do something like follows:
+
+```{r perm-fun}
+#' A simple permuation tests
+#' @param nsim Integer scalar. Number of permutations to do
+#' @param statistic A function that returns a scalar. This is the statistic that will be compared.
+#' @param x A numeric vector. The variable that will be permuted.
+#' @param ... Further arguments to be passed to `statistic`.
+permtest <- function(nsim=1e3, statistic, x, ...) {
+  
+  # Creating space in the memory
+  ans <- vector("double", nsim)
+  
+  # Random sorting of the data (we will use this with the `order` function)
+  ORD <- matrix(runif(nsim*length(x)), ncol=nsim)
+  for (b in 1:nsim)
+    # For each `i`, we compute the statistic changing the order of `x` as a
+    # function of `order(ORD[,i])` (this returns indexes)
+    ans[b] <- statistic(x[order(ORD[,b])], ...)
+  
+  # We return the resulting statistic
+  ans
+  
+}
+```
+
+
+You can also use the `boot::boot` function, this would be something like this:
+
+```r
+library(boot)
+boot(x, statistic=statistic, R = 1e3, sim="permutation")
+```
+
+And it would yield the same result
+
+
+# Example 1: No relation
+
+$X$ and $Y$ are independently drawn from a normal $N(0,1)$, the permutation tests should show no significant difference between this drawn and the null distribution.
+
+```{r example1-definitions}
+set.seed(112)
+n <- 1e3
+X <- cbind(rnorm(n))
+Y <- cbind(rnorm(n))
+
+# Defining tests statistic
+statistic <- function(x, y) {
+  cor(x, y)[1,1]
+}
+```
+
+```{r example1-execution}
+# Running the tests
+S <- permtest(1e4, statistic, X, y=Y)
+
+# Plotting the distribution
+hist(S, breaks=100, col="steelblue", border="transparent", freq = FALSE)
+
+# Computing pvalues
+(s_0 <- statistic(X, Y))
+
+# And drawing the line
+abline(v=s_0, col="tomato", lwd=2)
+legend(
+  "topleft",
+  legend = ifelse(mean(S < s_0) > .5, 1.0 - mean(S < s_0), mean(S < s_0)),
+  col    = "tomato",
+  lty    = 1,
+  bty    = "n"
+  )
+```
+
+# Example 2: Some relation
+
+Now, $X$ and $Y$ are related as $Y$ is a linear function of $X$ in the form of 
+
+$$
+Y = 0.9\times\varepsilon + 0.1\times X
+$$
+
+```{r example2-definitions}
+# set.seed(112)
+n <- 1e3
+X <- cbind(rnorm(n))
+Y <- cbind(rnorm(n))*.9 + X*.1
+
+# Defining tests statistic
+statistic <- function(x, y) {
+  cor(x, y)[1,1]
+}
+```
+
+```{r example2-execution}
+set.seed(122)
+# Running the tests
+S <- permtest(1e4, statistic, X, y=Y)
+
+# Plotting the distribution
+hist(S, breaks=100, col="steelblue", border="transparent", freq = FALSE)
+
+# Computing pvalues
+(s_0 <- statistic(X, Y))
+
+# And drawing the line
+abline(v=s_0, col="tomato", lwd=2)
+legend(
+  "topleft",
+  legend = ifelse(mean(S < s_0) > .5, 1.0 - mean(S < s_0), mean(S < s_0)),
+  col    = "tomato",
+  lty    = 1,
+  bty    = "n"
+  )
+```
+
