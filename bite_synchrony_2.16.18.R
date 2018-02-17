@@ -1,5 +1,5 @@
 # This code analyzes the cleaned dyad bite data
-# Updated: 2-16-18
+# Updated: 2-16-   18
 # Author: Brooke Bell
 
 rm(list=ls())
