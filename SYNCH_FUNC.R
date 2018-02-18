@@ -4,10 +4,6 @@
 # Author: Brooke Bell
 
 rm(list=ls())
-library(plyr)
-library(dplyr)
-library(gmodels)
-library(stringr)
 
 # IMPORT DYAD DATA FILES -----
 
@@ -17,8 +13,11 @@ n <- 24
 # set working directory to where dyad datasets are saved
 setwd("/Users/antunez/Dropbox (Metzlab - VS)/Metz Lab/CURRENT PROJECTS/M2FED/Bite Annotations/Cleaned data/At table")
 
-# import dyad datasets
+# create list of file names
 my_files <- paste0("dyad", 1:n, ".csv")
+
+# this generates the list used in function below
+# it is a list of all dyad datasets
 my_data <- lapply(my_files, read.csv)
 names(my_data) <- stringr::str_replace(my_files, pattern = ".csv", replacement = "")
 
@@ -30,12 +29,12 @@ SYNCH_FUNC <- function(x){
     
     num_subjects <- length(unique(x$SubjectID))
     
-    leader <- subset(x, x$SubjectID == unique(x$SubjectID)[1]) # Leader bites
-    follower <- subset(x, x$SubjectID == unique(x$SubjectID)[2]) # Follower bites
+    first <- subset(x, x$SubjectID == unique(x$SubjectID)[1]) # First biter
+    second <- subset(x, x$SubjectID == unique(x$SubjectID)[2]) # Second biter
     
     my_time <- min(x$bite_sec):max(x$bite_sec)
-    a_bite_list <- leader[[3]] # list of times when person1 took bites
-    b_bite_list <- follower[[3]] # list of times when person2 took bites
+    a_bite_list <- first[[3]] # list of times when first biter (person A) took bites
+    b_bite_list <- second[[3]] # list of times when second biter (person B) took bites
     
     mat <- as.data.frame(my_time) # turn time matrix into data frame
     
@@ -102,7 +101,29 @@ SYNCH_FUNC <- function(x){
 # "my_data" is the list of dyad datasets
 my_results <- lapply(my_data, SYNCH_FUNC)
 
+str(my_results)
 my_results
-  
+
+# b_bpm_sens: Bites per minute during sensitive period for person B 
+# b_bpm_nonsens: Bites per minute during non-sensitive period for person B
+# a_bpm_sens: Bites per minute during sensitive period for person A
+# a_bpm_nonsens: Bites per minute during non-sensitive period for person A
+
+# NON PARAMETRIC TESTING ----
+
+# For each dyad:
+
+# First, we want to compare Person B's BPM in sensitive vs non-sensitive periods.
+# Objective: to examine whether Person B was more likely to eat in the sensitive 
+# period than in the non-sensitive period. 
+# H0: b_bpm_sens = b_bpm_nonsens
+# HA: b_bpm_sens /= b_bpm_nonsens
+
+# Then, we went to compare Person A's BPM in sensitive vs non-sensitive periods.
+# Objective: to examine whether Person A was more likely to eat in the sensitive 
+# period than in the non-sensitive period. (a_bpm_sens > a_bpm_nonsens)
+# H0: a_bpm_sens = a_bpm_nonsens
+# HA: a_bpm_sens /= a_bpm_nonsens
+
   
 
