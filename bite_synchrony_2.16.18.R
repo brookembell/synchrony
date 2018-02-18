@@ -1,5 +1,5 @@
 # This code analyzes the cleaned dyad bite data
-# Updated: 2-16-   18
+# Updated: 2-16-18
 # Author: Brooke Bell
 
 rm(list=ls())
@@ -50,17 +50,32 @@ my_data_wide <- lapply(my_data, dyad_reshape)
 
 # COMPUTE SENSITIVE PERIODS ----
 
+# compute sensitive periods
 compute_sensitivity <- function(x){
   
-  x$sensitive <- 0
+  x$sensitive_a <- 0
+  x$sensitive_b <- 0
   
+  # compute sensitive periods for person a
   for (i in 2:nrow(x)){
-    x$sensitive[i] <- ifelse(x$a[i-1] == 1 
+    x$sensitive_a[i] <- ifelse(x$a[i-1] == 1 
                                || x$a[i-2] == 1
                                || x$a[i-3] == 1
                                || x$a[i-4] == 1
                                || x$a[i-5] == 1, 
                                1, 0)
+  }
+  
+  # compute sensitive periods for person b
+  for (i in 2:nrow(x)){
+    x$sensitive_b[i] <- ifelse(x$b[i-1] == 1 
+                               || x$b[i-2] == 1
+                               || x$b[i-3] == 1
+                               || x$b[i-4] == 1
+                               || x$b[i-5] == 1, 
+                               1, 0)
+    
+    x$sensitive_b[is.na(x$sensitive_b)] <- 0
   }
   
   print(x)
@@ -73,25 +88,30 @@ my_data_wide1 <- lapply(my_data_wide, compute_sensitivity)
 compare_sensitivity <- function(x){
   
   # Step 1: Divide into sensitive and nonsensitive subsets
-  sens <- subset(x, sensitive == 1)
-  nonsens <- subset(x, sensitive == 0)
   
-  # Step 2: Compute ratio of mimicked bites for Person A (Lead)
-  a_bpm_sens <- (sum(sens$a) / nrow(sens)) * 60
+  # Person A as lead
+  sens_a <- subset(x, sensitive_a == 1)
+  nonsens_a <- subset(x, sensitive_a == 0)
   
-  # Step 2: Compute ratio of mimicked bites for Person B (Follower)
-  b_bpm_sens <- (sum(sens$b) / nrow(sens)) * 60
+  # Person B as lead
+  sens_b <- subset(x, sensitive_b == 1)
+  nonsens_b <- subset(x, sensitive_b == 0)
   
-  # Step 3: Compute ratio of non-mimicked bites for Person A (Lead)
-  a_bpm_nonsens <- (sum(nonsens$a) / nrow(nonsens)) * 60
+  # Step 2-3: Compute ratio of mimicked and nonmimicked bites
   
-  # Step 3: Compute ratio of non-mimicked bites for Person B (Follower)
-  b_bpm_nonsens <- (sum(nonsens$b) / nrow(nonsens)) * 60
+  # Person A as lead
+  b_bpm_sens <- (sum(sens_a$b) / nrow(sens_a)) * 60
+  b_bpm_nonsens <- (sum(nonsens_a$b) / nrow(nonsens_a)) * 60
   
+  # Person B as lead
+  a_bpm_sens <- (sum(sens_b$a) / nrow(sens_b)) * 60
+  a_bpm_nonsens <- (sum(nonsens_b$a) / nrow(nonsens_b)) * 60
   
-  kable(cbind(a_bpm_sens, a_bpm_nonsens, b_bpm_sens, b_bpm_nonsens), 
-        col.names = c("A bpm Sensitive", "A bpm Non-Sensitive",
-                      "B bpm Sensitive", "B bpm Non-Sensitive"))
+  #table(cbind(a_bpm_sens, a_bpm_nonsens, b_bpm_sens, b_bpm_nonsens), 
+  #      col.names = c("A bpm Sensitive", "A bpm Non-Sensitive",
+  #                    "B bpm Sensitive", "B bpm Non-Sensitive"))
+  
+  data.frame(b_bpm_sens, b_bpm_nonsens, a_bpm_sens, a_bpm_nonsens)
   
 }
 
@@ -103,9 +123,34 @@ sens_stats
 
 # Step 5: Conduct paired sample t-tests comparing ratios of mimicked bites with ratios of nonmimicked bites
 
-# create list of mimicked bites ratios
+# create lists of mimicked and nonmimicked bite ratios
 
-# create list of nonmimicked bites ratios
+# B mimics A
+b_mimic <- list()
+b_nonmimic <- list()
+
+# A mimics B
+a_mimic <- list()
+a_nonmimic <- list()
+
+for(i in 1:n){
+  
+  # B mimics A
+  b_mimic[[length(b_mimic) + 1]] <- sens_stats[[i]][1]
+  b_nonmimic[[length(b_nonmimic) + 1]] <- sens_stats[[i]][2]
+  
+  # A mimics B
+  a_mimic[[length(a_mimic) + 1]] <- sens_stats[[i]][3]
+  a_nonmimic[[length(a_nonmimic) + 1]] <- sens_stats[[i]][4]
+}
+
+# RUN TTEST ----
+
+# Does B mimics A?
+t.test(as.numeric(as.data.frame(b_mimic)), as.numeric(as.data.frame(b_nonmimic)), paired = TRUE)
+
+# Does A mimic B?
+t.test(as.numeric(as.data.frame(a_mimic)), as.numeric(as.data.frame(a_nonmimic)), paired = TRUE)
 
 # RUN PERMUTATIONS ----
 
